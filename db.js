@@ -1,7 +1,11 @@
 const mongoose = require('mongoose')
 require('dotenv').config();
 
-const mongoUrl = process.env.MONGODB_URL_LOCAL; //this is the local setul connection 
+// const mongoUrl = process.env.MONGODB_URL_LOCAL; //this is the local setul connection 
+
+const mongoUrl = process.env.MONGODB_URL; //this is the local setul connection 
+
+
 
 mongoose.connect(mongoUrl, {
     serverSelectionTimeoutMS: 5000,
