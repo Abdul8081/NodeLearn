@@ -1,18 +1,30 @@
 const expres = require('express')
 const router = expres.Router();
 const Person = require('../models/Person')
+const {jwtAuthMiddleware, generateToken} = require('../middleware/jwt');
 
-router.post('/', async (req, res)=>{
+router.post('/signup', async (req, res)=>{
     try{
         const data = req.body;
 
         const newPerson = new Person(data);
 
         const response = await newPerson.save();
-        console.log('data saved');
+        console.log('data saved, data was : ', response);
+
+        const payload = {
+            id: response.id,
+            username: response.username
+        }
+        console.log("Payload is : ", payload);
+        const token = generateToken(payload);
+        console.log("Token received: ", token);
+
         res.status(200).json({
             success:true, 
             message:'data saved successfully',
+            response:response,
+            token:token
         });
     }
     catch(err){
@@ -21,6 +33,47 @@ router.post('/', async (req, res)=>{
             success:false, 
             message:'Internal Server Error'
         });
+    }
+})
+
+//login authentication setup
+router.post('/login', async (req, res)=>{
+    try{
+        const {username, password} = req.body;
+        const user = await Person.findOne({username:username});
+        if(!user || !(await user.comparePassword(password))){
+            return res.status(404).json('Invalid username or password');
+        }
+
+        const payload = {
+            id : user._id,
+            username:user.username
+        }
+
+        const token = generateToken(payload);
+
+        if(!token) return res.status(404).json('Error occured in token generation');
+        res.status(200).json({success:true, message:"User Logged in Successfully", token});
+    }
+    catch(error){
+        console.log(error);
+        res.status(500).json({success:false, message:'Internal Server Error'});
+    }
+})
+
+//new api prifile, which is authenticated
+router.get('/profile', jwtAuthMiddleware, async (req, res)=>{
+    try{
+        const userData = req.user;
+        console.log("User data : ", userData);
+        const user = await Person.findOne({username:userData.username});
+        if(!user) return res.status(404).json({success:false, message:"User not found"});
+
+        res.status(200).json({user});
+    }
+    catch(err){
+        console.log(err);
+        res.status(500).json({message:"Internal Server Error"});
     }
 })
 
@@ -120,6 +173,5 @@ router.delete('/:id', async (req, res)=>{
         res.status(500).json({success:false, message:"Internal Server Error"});
     }
 })
-
 
 module.exports = router;
